@@ -1,0 +1,23 @@
+{
+    "name": "Graph-RS",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python3",
+                "terminal.integrated.defaultProfile.linux": "bash"
+            },
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-azuretools.vscode-docker",
+                "ms-toolsai.jupyter",
+                "ms-python.black-formatter"
+            ]
+        }
+    },
+    "postCreateCommand": "pip install -r requirements.txt"
+}
