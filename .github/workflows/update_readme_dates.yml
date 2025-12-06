@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Important: Fetches all history needed to find creation date
+          fetch-depth: 0 # Fetches all history needed to find creation date
 
       - name: Calculate and Update Dates
         id: dates
@@ -53,7 +53,7 @@ jobs:
 
       - name: Commit and Push Changes (if file was updated)
         if: steps.dates.outputs.files_changed == 'true'
-        uses: stefanprodan/git-ensure-action@v1 # A common action for automated commits
+        uses: stefanprodan/git-ensure-action@v1
         with:
           commit_message: "🤖 chore: Auto-update README dates"
           commit_author: "GitHub Actions <actions@github.com>"
