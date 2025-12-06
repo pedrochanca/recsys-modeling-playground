@@ -9,48 +9,34 @@ on:
 jobs:
   update-dates:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # IMPORTANT: Ensures the Action can push back to the repo
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all history needed to find creation date
+          fetch-depth: 0 # Needed to calculate creation date correctly
 
       - name: Calculate and Update Dates
-        id: dates
         run: |
-          # 1. Get the date of the first commit (Creation Date)
+          # 1. Get dates
           CREATED_ON=$(git log --diff-filter=A --follow --format=%ad --date=format:'%Y-%m-%d' -- README.md | tail -1)
-
-          # 2. Get the date of the last commit (Last Updated)
           LAST_UPDATED=$(git log -1 --format=%ad --date=format:'%Y-%m-%d' -- README.md)
 
-          # 3. Create the replacement string
+          # 2. Prepare the text
           DATE_BLOCK="**Created On**: $CREATED_ON | **Last Updated**: $LAST_UPDATED"
 
-          # Debug: Print what we found to the logs
           echo "Found dates: $DATE_BLOCK"
 
-          # 4. Use 'sed' to replace the plain text placeholder
-          # We search for "DATE_PLACEHOLDER" and replace it with the dates
+          # 3. REPLACE "DATE_PLACEHOLDER" with the calculated dates
           sed -i 's@DATE_PLACEHOLDER@'"$DATE_BLOCK"'@g' README.md
 
-          # 5. Verify: Print the last few lines of README to show if it worked
-          echo "--- Content of README after sed ---"
-          tail -n 10 README.md
-
-          # Check if the file was modified
-          if [ -n "$(git status --porcelain README.md)" ]; then
-            echo "::set-output name=files_changed::true"
-            echo "::set-output name=commit_message::🤖 chore: Auto-update README dates"
-          else
-            echo "::set-output name=files_changed::false"
-          fi
+          # Debug: Show the change in the logs
+          git diff README.md
 
       - name: Commit updated README
-        if: steps.dates.outputs.files_changed == 'true'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: ${{ steps.dates.outputs.commit_message }}
-          branch: ${{ github.ref_name }}
-          commit_user_name: "GitHub Actions Bot"
-          commit_user_email: "actions@github.com"
+          commit_message: "🤖 chore: Auto-update README dates"
+          branch: master
+          file_pattern: README.md
