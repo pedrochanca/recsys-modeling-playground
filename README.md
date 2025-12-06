@@ -19,7 +19,7 @@ pip install -r requirements.txt
 
 ## Libraries
 
-- PyTorch #
+- PyTorch
 - Pandas
 - Scikit-learn (for Label Encoding)
 - Matplotlib (visualization)

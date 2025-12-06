@@ -47,15 +47,16 @@ jobs:
           # Check if the file was modified
           if [ -n "$(git status --porcelain README.md)" ]; then
             echo "::set-output name=files_changed::true"
+            echo "::set-output name=commit_message::🤖 chore: Auto-update README dates"
           else
             echo "::set-output name=files_changed::false"
           fi
 
-      - name: Commit and Push Changes
+      - name: Commit updated README
         if: steps.dates.outputs.files_changed == 'true'
-        uses: stefanprodan/git-ensure-action@v1
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "🤖 chore: Auto-update README dates"
-          commit_author: "GitHub Actions <actions@github.com>"
-          push_repository: true
-          push_branch: ${{ github.ref_name }}
+          commit_message: ${{ steps.dates.outputs.commit_message }}
+          branch: ${{ github.ref_name }}
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "actions@github.com"
