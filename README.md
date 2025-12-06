@@ -31,7 +31,7 @@ I will be using the MovieLens Latest Small dataset.
 
 ## SimpleNCF
 
-Here we implement a simpler version of the **Neural Collaborative Filtering (NCF)** approach using a single-layer Multi-Layer Perceptron (MLP).
+Here we implement a simplified version of the **Neural Collaborative Filtering (NCF)** [1] approach using a single-layer Multi-Layer Perceptron (MLP).
 
 It takes the user and item embeddings, concatenates them, and passes them through a single linear layer to predict the rating.
 
@@ -96,7 +96,11 @@ Below is a trace of the data shapes and values for a single prediction:
 
 ## DeepNCF (Multi-Layer Perceptron)
 
-This improved model replaces the single linear layer with a deep neural network (MLP) to capture non-linear interactions between users and items.
+To capture complex, non-linear interactions between user and item latent vectors, this model employs a Multi-Layer Perceptron (MLP) "tower" structure instead of the single linear layer used in the baseline model. This architecture directly adopts the MLP framework proposed in Neural Collaborative Filtering paper [1].
+
+For evaluation, we utilize the specific configuration of hidden layer dimensions that yielded the optimal performance during hyperparameter tuning.
+
+![DeepNCF Architecture diagram](images/simple_ncf_architecture.jpg)
 
 ### Model Architecture
 
@@ -108,9 +112,9 @@ The architecture extends the baseline by adding hidden layers with ReLU activati
 2.  **Embedding Lookup**: IDs are mapped to dense vectors (size 32).
 3.  **Concatenation**: User and Item vectors are joined (size 64).
 4.  **MLP Layers**:
-    * **Layer 1**: Linear (64 $\to$ 64) + ReLU + Dropout
-    * **Layer 2**: Linear (64 $\to$ 32) + ReLU + Dropout
-    * **Output Layer**: Linear (32 $\to$ 1)
+    * **Layer 1 (Input)**: Linear ($64 \to 32$) + ReLU + Dropout
+    * **Layer 2 (Hidden)**: Linear ($32 \to 16$) + ReLU + Dropout
+    * **Layer 3 (Output)**: Linear ($16 \to 1$)
 
 #### Mathematical Formulation
 
@@ -138,3 +142,7 @@ $$
     - Potentially try out other datasets
 
 - Metrics used (which and why)
+
+## References
+
+[1] X. He, L. Liao, H. Zhang, L. Nie, X. Hu, and T.-S. Chua, "Neural collaborative filtering," in Proceedings of the 26th International Conference on World Wide Web, 2017, pp. 173–182. doi: 10.1145/3038912.3052569.
