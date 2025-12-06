@@ -28,7 +28,7 @@ jobs:
           # Note: We use sed to replace a placeholder line in the README
 
           # Use simple Markdown text block for clarity
-          DATE_BLOCK="**Created On:** $CREATED_ON | **Last Updated:** $LAST_UPDATED"
+          DATE_BLOCK="**Created On**: $CREATED_ON | **Last Updated**: $LAST_UPDATED"
 
           echo "Date block: $DATE_BLOCK"
 
