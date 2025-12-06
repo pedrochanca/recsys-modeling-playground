@@ -2,9 +2,9 @@ name: Update README Dates
 on:
   push:
     branches:
-      - master # Or 'master', depending on your default branch name
+      - master
     paths:
-      - "README.md" # Only run the action if README.md has changed
+      - "README.md"
 
 jobs:
   update-dates:
