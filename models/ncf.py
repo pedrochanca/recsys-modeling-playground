@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from collections import OrderedDict
+
 
 class SimpleNCF(nn.Module):
     def __init__(self, n_users: int, n_items: int, emb_dim: int = 32):
@@ -19,9 +21,9 @@ class SimpleNCF(nn.Module):
         self.item_embedding = nn.Embedding(n_items, emb_dim)
 
         # single linear layer: 64 -> 1
-        self.output = nn.Linear(2 * emb_dim, 1)
+        self.fc = nn.Linear(2 * emb_dim, 1)
 
-    def forward(self, user_ids, item_ids):
+    def forward(self, user_ids: torch.Tensor, item_ids: torch.Tensor) -> torch.Tensor:
         """
         Zero hidden layers.
 
@@ -32,7 +34,7 @@ class SimpleNCF(nn.Module):
         i_emb = self.item_embedding(item_ids)  # size: [batch, 32]
 
         x = torch.cat([u_emb, i_emb], dim=1)
-        output = self.output(x)
+        output = self.fc(x)
 
         return output
 
@@ -42,12 +44,47 @@ class DeepNCF(nn.Module):
     nn.Module - when we call the class, it automatically executes the forward function
     """
 
-    def __init__(self, n_users, n_items, emb_dim=32):
+    def __init__(
+        self, n_users: int, n_items: int, emb_dim: int = 32, dropout: float = 0.2
+    ):
         """
-        (original paper)
-        layers (3): 64d - 32d - 16d (2 hidden layers + output layer / last hidden layer)
+        (NCF original paper - MLP version)
+        layers (#3): 64d - 32d - 16d
+        (2 hidden layers + output layer / last hidden layer)
         """
-        return None
+        super().__init__()
 
-    def forward(self, user_ids, item_ids):
-        return None
+        self.user_embedding = nn.Embedding(n_users, emb_dim)
+        self.item_embedding = nn.Embedding(n_items, emb_dim)
+
+        concat_dim = emb_dim * 2
+
+        self.fc = nn.Sequential(
+            OrderedDict(
+                [
+                    # Layer 1: 64 -> 32
+                    ("lin_1", nn.Linear(concat_dim, concat_dim // 2)),
+                    ("relu_1", nn.ReLU()),
+                    ("drop_1", nn.Dropout(dropout)),
+                    # Layer 2: 32 -> 16
+                    ("lin_2", nn.Linear(concat_dim // 2, concat_dim // 4)),
+                    ("relu_2", nn.ReLU()),
+                    ("drop_2", nn.Dropout(dropout)),
+                    # Output Layer: 16 -> 1
+                    ("lin_3", nn.Linear(concat_dim // 4, 1)),
+                ]
+            )
+        )
+
+    def forward(self, user_ids: torch.Tensor, item_ids: torch.Tensor) -> torch.Tensor:
+        # Look up
+        u_emb = self.user_embedding(user_ids)
+        i_emb = self.item_embedding(item_ids)
+
+        # Concat (Default Size 64)
+        x = torch.cat([u_emb, i_emb], dim=1)
+
+        # Pass through the tower
+        output = self.fc(x)
+
+        return output
