@@ -23,7 +23,7 @@ jobs:
           # 2. Create JSON file for Shields.io
           # We save it to a folder named 'badges'
           mkdir -p badges
-          echo "{ \"schemaVersion\": 1, \"label\": \"Project Dates\", \"message\": \"Created: $CREATED | Updated: $UPDATED\", \"color\": \"blue\" }" > badges/dates.json
+          echo "{ \"schemaVersion\": 1, \"label\": \"README Dates\", \"message\": \"Created: $CREATED | Updated: $UPDATED\", \"color\": \"blue\" }" > badges/dates.json
 
       - name: Deploy to Badges Branch
         uses: JamesIves/github-pages-deploy-action@v4
