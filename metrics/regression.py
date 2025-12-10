@@ -1,4 +1,4 @@
-from typing import Literal, DefaultDict, Dict, List, Tuple
+from typing import DefaultDict, Dict, List, Tuple
 from collections import defaultdict
 
 import torch

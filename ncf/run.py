@@ -13,7 +13,7 @@ from sklearn import model_selection, preprocessing
 import matplotlib.pyplot as plt
 
 
-from models.ncf import SimpleNCF, DeepNCF
+from ncf.model import SimpleNCF, DeepNCF
 from metrics.regression import collect_user_predictions, rmse, precision_recall_at_k
 
 
@@ -258,17 +258,6 @@ def evaluate_model(loader, model, loss_func, device: str):
     return total_loss / total_samples
 
 
-"""
-
-train / test - 0.9 / 0.1
-
-train / val / test - 0.8 / 0.1 / 0.1
-- train / val - 0.8 / 0.1
-- train + val / test - 0.9 / 0.1
-
-"""
-
-
 def param_comb(config, is_tune: bool):
 
     if is_tune:
@@ -291,7 +280,6 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
     RANDOM_SEED = CONFIG["system"]["random_seed"]
     DEVICE = CONFIG["system"]["device"]
 
-    TRAIN_SPLIT = CONFIG["data"]["train_split"]
     VAL_SPLIT = CONFIG["data"]["val_split"]
     TEST_SPLIT = CONFIG["data"]["test_split"]
 
@@ -299,7 +287,7 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
     # ------ Data / batch setup
     # ----------------------------------------------------------------------------------
 
-    df = pd.read_csv("datasets/ml-latest-small/ratings.csv")
+    df = pd.read_csv("data/ml-latest-small/ratings.csv")
     df.rename(
         columns={"userId": "user_id", "movieId": "item_id", "timestamp": "ts"},
         inplace=True,
@@ -330,19 +318,18 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
     for params in param_combinations:
         # MERGE: Combine fixed settings with current trial settings
         # This ensures 'step_size' and 'gamma' are available
-        current_args = {**params}
 
-        print(f"Testing: {current_args}")
+        print(f"Testing: {params}")
 
         # ------------------------------------------------------------------------------
         # ------ Model Related Parameters
         # ------------------------------------------------------------------------------
 
-        BATCH_SIZE = current_args["batch_size"]
-        EPOCHS = current_args["epochs"]
-        LOG_EVERY = current_args["log_every"]
-        STEP_SIZE = current_args["step_size"]
-        GAMMA = current_args["gamma"]
+        BATCH_SIZE = params["batch_size"]
+        EPOCHS = params["epochs"]
+        LOG_EVERY = params["log_every"]
+        STEP_SIZE = params["step_size"]
+        GAMMA = params["gamma"]
 
         train_loader, test_loader = prep_batch(
             train_set, test_set, batch_size=BATCH_SIZE, verbose=VERBOSE
@@ -364,9 +351,7 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
         try:
             # Get the class by name from global scope
             model_class = globals()[MODEL_ARCHITECTURE]
-            model = model_class(n_users=n_users, n_items=n_items, **current_args).to(
-                DEVICE
-            )
+            model = model_class(n_users=n_users, n_items=n_items, **params).to(DEVICE)
 
         except KeyError:
             raise ValueError(
@@ -452,7 +437,7 @@ if __name__ == "__main__":
         help="Model architecture to use: SimpleNCF or DeepNCF",
     )
     parser.add_argument(
-        "--config", type=str, default="ncf_config.yml", help="Path to config file"
+        "--config", type=str, default="ncf/config.yml", help="Path to config file"
     )
     parser.add_argument(
         "--plot",
