@@ -17,6 +17,11 @@ Install requirements (e.g., inside a `pyenv` or `conda` environment):
 pip install -r requirements.txt
 ```
 
+## Example to run:
+```
+python -m ncf.run --model DeepNCF --tune --plot --verbose
+```
+
 ## Libraries
 
 - PyTorch
@@ -26,10 +31,14 @@ pip install -r requirements.txt
 
 ## Dataset
 
-I will be using the MovieLens Latest Small dataset.
-- 100k ratings
-- 610 unique users
-- 9,724 unique items (movies)
+1. MovieLens Latest Small dataset
+    - Used for an Explicit Feedback w/ NCF.
+    - 100k ratings
+    - 610 unique users
+    - 9,724 unique items (movies)
+
+2. Amazon Reviews (books)
+    - To be used for Implicit Feedback.
 
 ## SimpleNCF
 
@@ -138,12 +147,12 @@ $$
 
 ## Next Steps
 
-- NCF (MLP version)
-
 - NCF (MLP version) beyond embedding look-ups (features)
     - Potentially try out other datasets
 
-- Metrics used (which and why)
+- Metrics
+    - which and why
+    - To add: Hit Rate, NDCG (Regression based)
 
 ## References
 
