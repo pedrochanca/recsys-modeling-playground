@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 from ncf.model import SimpleNCF, DeepNCF
-from metrics.regression import collect_user_predictions, rmse, precision_recall_at_k
+from metrics.regression import collect_user_predictions, compute_metrics
 
 
 def load_config(path):
@@ -403,25 +403,35 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
             user_pred_true = collect_user_predictions(test_loader, model, DEVICE)
 
             # Standard, accurate RMSE over all individual ratings
-            rmse_score = rmse(user_pred_true)
-            print("RMSE: {}\n".format(np.round(rmse_score, 4)))
+            # rmse_score = rmse(user_pred_true)
+            # print("RMSE: {}\n".format(np.round(rmse_score, 4)))
 
             K = [1, 3, 5, 10, 20, 50, 100]
             THRESHOLD = 3.5
 
             for k in K:
 
-                precisions, recalls = precision_recall_at_k(
-                    user_pred_true, k=k, threshold=THRESHOLD
+                metrics = compute_metrics(
+                    user_pred_true=user_pred_true,
+                    metrics=["precision", "recall", "hit_rate", "ndcg", "rmse"],
+                    k=k,
+                    threshold=THRESHOLD,
                 )
 
-                total_precision = sum(
-                    precision for precision in precisions.values()
-                ) / len(precisions)
-                total_recall = sum(recall for recall in recalls.values()) / len(recalls)
+                # total_precision = sum(
+                #     precision for precision in metrics["precision"].values()
+                # ) / len(metrics["precision"])
+                # total_recall = sum(
+                #     recall for recall in metrics["recall"].values()
+                # ) / len(metrics["recall"])
 
-                print("Precision @ {}: {}".format(k, np.round(total_precision, 4)))
-                print("Recall @ {}: {} \n".format(k, np.round(total_recall, 4)))
+                print("Precision @ {}: {}".format(k, np.round(metrics["precision"], 4)))
+                print("Recall @ {}: {} \n".format(k, np.round(metrics["recall"], 4)))
+
+                print("Hit Rate @ {}: {}".format(k, np.round(metrics["hit_rate"], 4)))
+                print("nDCG @ {}: {} \n".format(k, np.round(metrics["ndcg"], 4)))
+
+                print("RMSE {}: {} \n".format(k, np.round(metrics["rmse"], 4)))
 
 
 if __name__ == "__main__":
