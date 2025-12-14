@@ -6,8 +6,14 @@ In this repo, you will find different experiments on Graph-based models for reco
 
 The goal is to have a better understanding of how these architectures work, starting with standard baselines and moving toward Graph Neural Networks (GNNs).
 
+--------------------------------------------------------------------
+
+
 ## Prerequisites
 * **Python 3.12+**
+
+--------------------------------------------------------------------
+
 
 ## Setup 
 
@@ -17,10 +23,15 @@ Install requirements (e.g., inside a `pyenv` or `conda` environment):
 pip install -r requirements.txt
 ```
 
+--------------------------------------------------------------------
+
+
 ## Example to run:
 ```
 python -m ncf.run --model DeepNCF --tune --plot --verbose
 ```
+
+--------------------------------------------------------------------
 
 ## Libraries
 
@@ -28,6 +39,8 @@ python -m ncf.run --model DeepNCF --tune --plot --verbose
 - Pandas
 - Scikit-learn (for Label Encoding)
 - Matplotlib (visualization)
+
+--------------------------------------------------------------------
 
 ## Dataset
 
@@ -40,6 +53,8 @@ python -m ncf.run --model DeepNCF --tune --plot --verbose
 2. Amazon Reviews (books)
     - To be used for Implicit Feedback.
     - Link: https://amazon-reviews-2023.github.io
+
+--------------------------------------------------------------------
 
 ## Models
 
@@ -54,6 +69,9 @@ So far we have implemented two versions of the **Neural Collaborative Filtering 
 - NCF (MLP version) beyond embedding look-ups (features)
 
 - NCF: Explore other datasets, including those w/ implicit feedback
+
+--------------------------------------------------------------------
+
 
 ## References
 
