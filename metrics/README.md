@@ -109,10 +109,11 @@ The DCG score of a hypothetical "Perfect Ordering" where all relevant items are 
 * Actual Relevant Item List: [Item A (1), Item B (0), Item C (1)] $\rightarrow$ DCG = 1.5
 * Ideal Relevant Item List: [Item A (1), Item C (1), Item B (0)] $\rightarrow$ DCG = 1.63
 
-* **Logic**:
-    * Uses Binary Relevance (0 or 1).
-    * *Edge Case*: If a user has 0 relevant items, IDCG is 0, so NDCG is defined as 0.0 (or excluded).
-* **Interpretation**: Higher is better. 1.0 is a perfect ranking.
+**Logic**:
+* Uses Binary Relevance (0 or 1).
+* *Edge Case*: If a user has 0 relevant items, IDCG is 0, so NDCG is defined as 0.0 (or excluded).
+
+**Interpretation**: Higher is better. 1.0 is a perfect ranking.
 
 ---
 
