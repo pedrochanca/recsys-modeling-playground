@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ## Example to run:
 ```
-python -m ncf.run --model DeepNCF --tune --plot --verbose
+python -m scripts.run_ncf --model DeepNCF --tune --plot --verbose
 ```
 
 --------------------------------------------------------------------
