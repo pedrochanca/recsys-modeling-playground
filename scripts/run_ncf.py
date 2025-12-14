@@ -2,146 +2,24 @@ import pandas as pd
 import numpy as np
 import argparse
 import yaml
-import itertools
 
-from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
-
-from sklearn import model_selection, preprocessing
-
 import matplotlib.pyplot as plt
 
 
 from src.models.ncf import SimpleNCF, DeepNCF
 from src.training.eval import collect_user_predictions, compute_metrics
 from src.training.train_mlp import train_model, evaluate_model
+from src.data.preprocessing import preprocess_dataframe, prep_datasets
 from src.data.datasets import ExplicitDataset
+from src.data.dataloaders import prep_batch
+from src.utils.hparam_search import param_comb
 
 
 def load_config(path):
     with open(path, "r") as f:
         return yaml.safe_load(f)
-
-
-def preprocess_dataframe(df: pd.DataFrame):
-
-    # encode the user and item id to start from 0 (this is what nn.Embedding expects)
-    # this prevents us from run into index out of bound "error" with Embedding lookup
-    lbl_user = preprocessing.LabelEncoder()
-    lbl_item = preprocessing.LabelEncoder()
-
-    df.user_id = lbl_user.fit_transform(df.user_id.values)
-    df.item_id = lbl_item.fit_transform(df.item_id.values)
-
-    n_users = len(lbl_user.classes_)
-    n_items = len(lbl_item.classes_)
-
-    return df, n_users, n_items
-
-
-def prep_datasets(
-    df: pd.DataFrame,
-    val_split: float,
-    test_split: float,
-    use_validation: bool,
-    random_seed: int = 42,
-    verbose: bool = False,
-):
-
-    df_train_val, df_test = model_selection.train_test_split(
-        df, test_size=test_split, random_state=random_seed, stratify=df["rating"].values
-    )
-
-    if use_validation:
-        # Adjust val ratio relative to the remaining data
-        relative_val_size = val_split / (1 - test_split)
-
-        df_train, df_test = model_selection.train_test_split(
-            df_train_val,
-            test_size=relative_val_size,
-            random_state=random_seed,
-            stratify=df_train_val["rating"].values,
-        )
-
-        test_dataset = ExplicitDataset(
-            users=df_test["user_id"].values,
-            items=df_test["item_id"].values,
-            targets=df_test["rating"].values,
-        )
-    else:
-        # Keep all remaining data as training
-        df_train = df_train_val
-
-    train_dataset = ExplicitDataset(
-        users=df_train["user_id"].values,
-        items=df_train["item_id"].values,
-        targets=df_train["rating"].values,
-    )
-
-    test_dataset = ExplicitDataset(
-        users=df_test["user_id"].values,
-        items=df_test["item_id"].values,
-        targets=df_test["rating"].values,
-    )
-
-    if verbose:
-        print(
-            "Lengths: train set = {}; test set = {}".format(
-                len(train_dataset), len(test_dataset)
-            ),
-            "Types: train set = {}; test set = {}".format(
-                type(train_dataset), type(test_dataset)
-            ),
-        )
-
-    return train_dataset, test_dataset
-
-
-def prep_batch(
-    train_dataset: Dataset,
-    test_dataset: Dataset,
-    batch_size: int = 4,
-    shuffle: bool = True,
-    n_workers: int = 2,
-    verbose: bool = False,
-):
-    """
-    total number of batches = nb. training points / batch_size
-    """
-
-    train_loader = DataLoader(
-        dataset=train_dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=n_workers,
-    )
-
-    test_loader = DataLoader(
-        dataset=test_dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=n_workers,
-    )
-
-    if verbose:
-        dataiter = iter(train_loader)
-        print(next(dataiter))
-
-    return train_loader, test_loader
-
-
-def param_comb(config, is_tune: bool):
-
-    if is_tune:
-
-        keys, values = zip(*config.items())
-        combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
-
-    else:
-        combinations = [config]
-
-    return combinations
 
 
 def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
@@ -150,10 +28,12 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
     # ------ Parameters
     # ----------------------------------------------------------------------------------
 
+    # system-related
     RANDOM_SEED = CONFIG["system"]["random_seed"]
     DEVICE = CONFIG["system"]["device"]
-
+    # data-related
     PATH = CONFIG["data"]["path"]
+    IMPLICIT_FEEDBACK = CONFIG["data"]["implicit_feedback"]
     VAL_SPLIT = CONFIG["data"]["val_split"]
     TEST_SPLIT = CONFIG["data"]["test_split"]
 
@@ -166,6 +46,8 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
         columns={"userId": "user_id", "movieId": "item_id", "timestamp": "ts"},
         inplace=True,
     )
+    if IMPLICIT_FEEDBACK:
+        df["rating"] = 1.0
 
     df, n_users, n_items = preprocess_dataframe(df)
 
@@ -174,6 +56,7 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
         val_split=VAL_SPLIT,
         test_split=TEST_SPLIT,
         use_validation=TUNE,
+        dataset_cls=ExplicitDataset,
         random_seed=RANDOM_SEED,
         verbose=VERBOSE,
     )

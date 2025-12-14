@@ -2,10 +2,11 @@
 system:
   random_seed: 42
   device: "cpu" # "cuda", "cpu", or "auto"
-  save_dir: "./models"
+  save_dir: "src/models"
 
 data:
   path: "data/ml-latest-small/ratings.parquet"
+  implicit_feedback: True
   val_split: 0.1
   test_split: 0.1
 
