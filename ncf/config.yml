@@ -5,7 +5,7 @@ system:
   save_dir: "./models"
 
 data:
-  path: "datasets/ml-latest-small/ratings.csv"
+  path: "data/ml-latest-small/ratings.parquet"
   val_split: 0.1
   test_split: 0.1
 
@@ -14,6 +14,7 @@ SimpleNCF:
     epochs: 3
     learning_rate: [1.0e-3, 5.0e-4, 1.0e-4]
     batch_size: [128, 256, 512]
+    n_workers: [2]
 
     layers:
       - [64]
@@ -33,6 +34,7 @@ SimpleNCF:
     epochs: 1
     learning_rate: 0.001
     batch_size: 4
+    n_workers: 2
 
     layer: 64
 
@@ -52,6 +54,7 @@ DeepNCF:
     epochs: [20]
     learning_rate: [1.0e-3]
     batch_size: [128, 256]
+    n_workers: [2]
 
     dropout: [0.0, 0.2]
     layers:
@@ -72,6 +75,7 @@ DeepNCF:
     epochs: 1
     learning_rate: 0.0005
     batch_size: 124
+    n_workers: 2
 
     dropout: 0.2
     layers: [64, 32, 16]

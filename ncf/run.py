@@ -122,7 +122,7 @@ def prep_batch(
     test_dataset: Dataset,
     batch_size: int = 4,
     shuffle: bool = True,
-    num_workers: int = 2,
+    n_workers: int = 2,
     verbose: bool = False,
 ):
     """
@@ -133,14 +133,14 @@ def prep_batch(
         dataset=train_dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        num_workers=num_workers,
+        num_workers=n_workers,
     )
 
     test_loader = DataLoader(
         dataset=test_dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        num_workers=num_workers,
+        num_workers=n_workers,
     )
 
     if verbose:
@@ -280,6 +280,7 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
     RANDOM_SEED = CONFIG["system"]["random_seed"]
     DEVICE = CONFIG["system"]["device"]
 
+    PATH = CONFIG["data"]["path"]
     VAL_SPLIT = CONFIG["data"]["val_split"]
     TEST_SPLIT = CONFIG["data"]["test_split"]
 
@@ -287,7 +288,7 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
     # ------ Data / batch setup
     # ----------------------------------------------------------------------------------
 
-    df = pd.read_csv("data/ml-latest-small/ratings.csv")
+    df = pd.read_parquet(PATH)
     df.rename(
         columns={"userId": "user_id", "movieId": "item_id", "timestamp": "ts"},
         inplace=True,
@@ -325,15 +326,20 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
         # ------ Model Related Parameters
         # ------------------------------------------------------------------------------
 
-        BATCH_SIZE = params["batch_size"]
         EPOCHS = params["epochs"]
-        LOG_EVERY = params["log_every"]
+        BATCH_SIZE = params["batch_size"]
+        N_WORKERS = params["n_workers"]
         STEP_SIZE = params["step_size"]
         GAMMA = params["gamma"]
+        LOG_EVERY = params["log_every"]
         THRESHOLD = params["threshold"]
 
         train_loader, test_loader = prep_batch(
-            train_set, test_set, batch_size=BATCH_SIZE, verbose=VERBOSE
+            train_set,
+            test_set,
+            batch_size=BATCH_SIZE,
+            n_workers=N_WORKERS,
+            verbose=VERBOSE,
         )
 
         # ------------------------------------------------------------------------------

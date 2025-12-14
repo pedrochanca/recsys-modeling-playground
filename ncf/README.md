@@ -102,3 +102,7 @@ Where $\sigma$ is the activation function (ReLU). The final score $\hat{y}_{u,i}
 $$
 \hat{y}_{u,i} = \mathbf{W}_{out} \mathbf{x}_{last} + b_{out}
 $$
+
+##### ReLU
+
+##### Dropout
