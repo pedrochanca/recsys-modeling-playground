@@ -5,7 +5,7 @@ import torch
 from src.data.samplers import NegativeSampler
 
 
-class ExplicitDataset(Dataset):
+class ImplicitDataset(Dataset):
     def __init__(self, users, items, targets):
         self.users = users
         self.items = items
@@ -17,13 +17,13 @@ class ExplicitDataset(Dataset):
     def __getitem__(self, idx):
         users = self.users[idx]
         items = self.items[idx]
-        targets = self.targets[idx]
+        labels = self.label[idx]
 
-        return {
-            "users": torch.tensor(users, dtype=torch.long),
-            "items": torch.tensor(items, dtype=torch.long),
-            "targets": torch.tensor(targets, dtype=torch.float),
-        }
+        return (
+            torch.tensor(users, dtype=torch.long),
+            torch.tensor(items, dtype=torch.long),
+            torch.tensor(label, dtype=torch.float32),
+        )
 
 
 class PointwiseImplicitDataset(Dataset):
@@ -39,7 +39,7 @@ class PointwiseImplicitDataset(Dataset):
         items,
         timestamps,
         negative_sampler: NegativeSampler,
-        num_negatives: int = 4,
+        num_negatives: int,
     ):
         self.users = users
         self.items = items

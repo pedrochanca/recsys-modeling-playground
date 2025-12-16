@@ -5,9 +5,9 @@ from torch.utils.data import Dataset, DataLoader
 def prep_batch(
     train_dataset: Type[Dataset],
     test_dataset: Type[Dataset],
-    batch_size: int = 4,
+    batch_size: int,
+    n_workers: int,
     shuffle: bool = True,
-    n_workers: int = 2,
     verbose: bool = False,
 ):
     """

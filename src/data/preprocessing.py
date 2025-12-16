@@ -31,7 +31,7 @@ def prep_datasets(
 ):
 
     df_train_val, df_test = model_selection.train_test_split(
-        df, test_size=test_split, random_state=random_seed, stratify=df["rating"].values
+        df, test_size=test_split, random_state=random_seed, stratify=df["target"].values
     )
 
     if use_validation:
@@ -42,13 +42,13 @@ def prep_datasets(
             df_train_val,
             test_size=relative_val_size,
             random_state=random_seed,
-            stratify=df_train_val["rating"].values,
+            stratify=df_train_val["target"].values,
         )
 
         test_dataset = dataset_cls(
             users=df_test["user_id"].values,
             items=df_test["item_id"].values,
-            targets=df_test["rating"].values,
+            targets=df_test["target"].values,
         )
     else:
         # Keep all remaining data as training
@@ -57,13 +57,13 @@ def prep_datasets(
     train_dataset = dataset_cls(
         users=df_train["user_id"].values,
         items=df_train["item_id"].values,
-        targets=df_train["rating"].values,
+        targets=df_train["target"].values,
     )
 
     test_dataset = dataset_cls(
         users=df_test["user_id"].values,
         items=df_test["item_id"].values,
-        targets=df_test["rating"].values,
+        targets=df_test["target"].values,
     )
 
     if verbose:

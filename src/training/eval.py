@@ -94,14 +94,14 @@ def compute_metrics(
     Parameters
     ----------
     user_pred_true
-        Dictionary {user_id: [(pred_rating, true_rating), ...]}.
+        Dictionary {user_id: [(pred_target, true_target), ...]}.
     metrics
         List of metrics to compute.
         Options: ["precision", "recall", "hit_rate", "ndcg", "rmse"].
     k
         The rank cutoff.
     threshold
-        The rating threshold for binary relevance.
+        The target threshold for binary relevance.
 
     Returns
     -------

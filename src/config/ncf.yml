@@ -5,8 +5,7 @@ system:
   save_dir: "src/models"
 
 data:
-  path: "data/ml-latest-small/ratings.parquet"
-  implicit_feedback: True
+  location: "data/gold/ml-latest-small"
   val_split: 0.1
   test_split: 0.1
 
@@ -75,7 +74,7 @@ DeepNCF:
   optim_params:
     epochs: 1
     learning_rate: 0.0005
-    batch_size: 124
+    batch_size: 4
     n_workers: 2
 
     dropout: 0.2

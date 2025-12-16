@@ -31,9 +31,9 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
     # system-related
     RANDOM_SEED = CONFIG["system"]["random_seed"]
     DEVICE = CONFIG["system"]["device"]
+
     # data-related
-    PATH = CONFIG["data"]["path"]
-    IMPLICIT_FEEDBACK = CONFIG["data"]["implicit_feedback"]
+    LOCATION = CONFIG["data"]["location"]
     VAL_SPLIT = CONFIG["data"]["val_split"]
     TEST_SPLIT = CONFIG["data"]["test_split"]
 
@@ -41,15 +41,22 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
     # ------ Data / batch setup
     # ----------------------------------------------------------------------------------
 
-    df = pd.read_parquet(PATH)
-    df.rename(
-        columns={"userId": "user_id", "movieId": "item_id", "timestamp": "ts"},
-        inplace=True,
-    )
-    if IMPLICIT_FEEDBACK:
-        df["rating"] = 1.0
+    if TUNE:
+        df_train = pd.read_parquet(f"{LOCATION}/train.parquet")
+        df_test = pd.read_parquet(f"{LOCATION}/val.parquet")
+    else:
+        df_train = pd.read_parquet(f"{LOCATION}/train_val.parquet")
+        df_test = pd.read_parquet(f"{LOCATION}/test.parquet")
 
-    df, n_users, n_items = preprocess_dataframe(df)
+    df_interactions = pd.read_parquet(f"{LOCATION}/interactions.parquet")
+    df_user_positive_items = (
+        df_interactions.groupby("user_id")["item_id"].apply(set).to_dict()
+    )
+
+    n_users = df_interactions["user_id"].max() + 1
+    n_items = df_interactions["item_id"].max() + 1
+
+    sampler = GlobalUniformNegativeSampler(n_items, df_user_positive_items)
 
     train_set, test_set = prep_datasets(
         df,
@@ -83,6 +90,7 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
         # ------------------------------------------------------------------------------
 
         EPOCHS = params["epochs"]
+        N_NEGATIVES = params["negatives"]
         BATCH_SIZE = params["batch_size"]
         N_WORKERS = params["n_workers"]
         STEP_SIZE = params["step_size"]
@@ -90,21 +98,24 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
         LOG_EVERY = params["log_every"]
         THRESHOLD = params["threshold"]
 
-        train_loader, test_loader = prep_batch(
-            train_set,
-            test_set,
-            batch_size=BATCH_SIZE,
-            n_workers=N_WORKERS,
-            verbose=VERBOSE,
-        )
-
         # ------------------------------------------------------------------------------
         # ------ Batch Preparation
         # ------------------------------------------------------------------------------
 
-        train_loader, test_loader = prep_batch(
-            train_set, test_set, batch_size=BATCH_SIZE, verbose=VERBOSE
+        train_dataset = PointwiseImplicitDataset(
+            df_train, sampler, num_negatives=N_NEGATIVES
         )
+        train_loader = DataLoader(
+            train_dataset, batch_size=BATCH_SIZE, n_workers=N_WORKERS, shuffle=True
+        )
+
+        # train_loader, test_loader = prep_batch(
+        #     train_set,
+        #     test_set,
+        #     batch_size=BATCH_SIZE,
+        #     n_workers=N_WORKERS,
+        #     verbose=VERBOSE,
+        # )
 
         # ------------------------------------------------------------------------------
         # ------ Model Dynamic Instantiation
