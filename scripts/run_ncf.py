@@ -2,19 +2,18 @@ import pandas as pd
 import numpy as np
 import argparse
 import yaml
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
-import matplotlib.pyplot as plt
-
+from torch.utils.data import DataLoader
 
 from src.models.ncf import SimpleNCF, DeepNCF
 from src.training.eval import collect_user_predictions, compute_metrics
 from src.training.train_mlp import train_model, evaluate_model
-from src.data.preprocessing import preprocess_dataframe, prep_datasets
-from src.data.datasets import ExplicitDataset
-from src.data.dataloaders import prep_batch
+from src.data.datasets import PointwiseImplicitDataset, OfflineImplicitDataset
 from src.utils.hparam_search import param_comb
+from src.data.samplers import GlobalUniformNegativeSampler
 
 
 def load_config(path):
@@ -22,62 +21,45 @@ def load_config(path):
         return yaml.safe_load(f)
 
 
-def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
+def main(MODEL_ARCHITECTURE, PLOT, TUNE, CONFIG, VERBOSE):
 
     # ----------------------------------------------------------------------------------
-    # ------ Parameters
+    # ------ Global Parameters
     # ----------------------------------------------------------------------------------
 
-    # system-related
-    RANDOM_SEED = CONFIG["system"]["random_seed"]
     DEVICE = CONFIG["system"]["device"]
-
-    # data-related
     LOCATION = CONFIG["data"]["location"]
-    VAL_SPLIT = CONFIG["data"]["val_split"]
-    TEST_SPLIT = CONFIG["data"]["test_split"]
-
-    # ----------------------------------------------------------------------------------
-    # ------ Data / batch setup
-    # ----------------------------------------------------------------------------------
-
     if TUNE:
-        df_train = pd.read_parquet(f"{LOCATION}/train.parquet")
-        df_test = pd.read_parquet(f"{LOCATION}/val.parquet")
+        MODEL_CONFIG = CONFIG[MODEL_ARCHITECTURE]["tuning"]
+        TRAIN_FILE = "train"
+        TEST_FILE = "val"
     else:
-        df_train = pd.read_parquet(f"{LOCATION}/train_val.parquet")
-        df_test = pd.read_parquet(f"{LOCATION}/test.parquet")
+        MODEL_CONFIG = CONFIG[MODEL_ARCHITECTURE]["optim_params"]
+        TRAIN_FILE = "train_val"
+        TEST_FILE = "test"
+
+    # ----------------------------------------------------------------------------------
+    # ------ Data
+    # ----------------------------------------------------------------------------------
+
+    df_train = pd.read_parquet(f"{LOCATION}/{TRAIN_FILE}.parquet")
+    df_test = pd.read_parquet(f"{LOCATION}/{TEST_FILE}.parquet")
 
     df_interactions = pd.read_parquet(f"{LOCATION}/interactions.parquet")
-    df_user_positive_items = (
+    user_positive_items = (
         df_interactions.groupby("user_id")["item_id"].apply(set).to_dict()
     )
 
     n_users = df_interactions["user_id"].max() + 1
     n_items = df_interactions["item_id"].max() + 1
 
-    sampler = GlobalUniformNegativeSampler(n_items, df_user_positive_items)
-
-    train_set, test_set = prep_datasets(
-        df,
-        val_split=VAL_SPLIT,
-        test_split=TEST_SPLIT,
-        use_validation=TUNE,
-        dataset_cls=ExplicitDataset,
-        random_seed=RANDOM_SEED,
-        verbose=VERBOSE,
-    )
+    negative_sampler = GlobalUniformNegativeSampler(n_items, user_positive_items)
 
     # ----------------------------------------------------------------------------------
-    # ------ Tune OR evaluate
+    # ------ MAIN: Tune OR evaluate
     # ----------------------------------------------------------------------------------
 
-    if TUNE:
-        model_config = CONFIG[MODEL_ARCHITECTURE]["tuning"]
-    else:
-        model_config = CONFIG[MODEL_ARCHITECTURE]["optim_params"]
-
-    param_combinations = param_comb(config=model_config, is_tune=TUNE)
+    param_combinations = param_comb(config=MODEL_CONFIG, is_tune=TUNE)
 
     for params in param_combinations:
         # MERGE: Combine fixed settings with current trial settings
@@ -90,7 +72,7 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
         # ------------------------------------------------------------------------------
 
         EPOCHS = params["epochs"]
-        N_NEGATIVES = params["negatives"]
+        N_NEGATIVES = params["n_negatives"]
         BATCH_SIZE = params["batch_size"]
         N_WORKERS = params["n_workers"]
         STEP_SIZE = params["step_size"]
@@ -99,23 +81,29 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
         THRESHOLD = params["threshold"]
 
         # ------------------------------------------------------------------------------
-        # ------ Batch Preparation
+        # ------ Prepare Dataset / Loader
         # ------------------------------------------------------------------------------
 
         train_dataset = PointwiseImplicitDataset(
-            df_train, sampler, num_negatives=N_NEGATIVES
+            users=df_train["user_id"].values,
+            items=df_train["item_id"].values,
+            timestamps=df_train["ts"].values,
+            negative_sampler=negative_sampler,
+            n_negatives=N_NEGATIVES,
         )
         train_loader = DataLoader(
-            train_dataset, batch_size=BATCH_SIZE, n_workers=N_WORKERS, shuffle=True
+            train_dataset, batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=True
         )
 
-        # train_loader, test_loader = prep_batch(
-        #     train_set,
-        #     test_set,
-        #     batch_size=BATCH_SIZE,
-        #     n_workers=N_WORKERS,
-        #     verbose=VERBOSE,
-        # )
+        test_dataset = OfflineImplicitDataset(
+            users=df_test["user_id"].values,
+            items=df_test["item_id"].values,
+            labels=df_test["label"].values,
+        )
+
+        test_loader = DataLoader(
+            test_dataset, batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=False
+        )
 
         # ------------------------------------------------------------------------------
         # ------ Model Dynamic Instantiation
@@ -175,7 +163,7 @@ def main(MODEL_ARCHITECTURE, PLOT, VERBOSE, TUNE, CONFIG):
         if not TUNE:
 
             K = [1, 3, 5, 10, 20, 50, 100]
-            metrics_to_compute = ["precision", "recall", "hit_rate", "ndcg", "rmse"]
+            metrics_to_compute = ["precision", "recall", "hit_rate", "ndcg"]
 
             user_pred_true = collect_user_predictions(test_loader, model, DEVICE)
 
@@ -243,7 +231,7 @@ if __name__ == "__main__":
     main(
         MODEL_ARCHITECTURE=args.model,
         PLOT=args.plot,
-        VERBOSE=args.verbose,
         TUNE=args.tune,
         CONFIG=load_config(args.config),
+        VERBOSE=args.verbose,
     )

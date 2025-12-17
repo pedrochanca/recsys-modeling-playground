@@ -3,10 +3,11 @@ import numpy as np
 
 
 class NegativeSampler(Protocol):
+
     def sample(
         self,
         user_id: int,
-        num_negatives: int,
+        n_negatives: int,
         current_timestamp: Optional[int] = None,
     ) -> np.ndarray: ...
 
@@ -24,13 +25,13 @@ class GlobalUniformNegativeSampler:
     def sample(
         self,
         user_id: int,
-        num_negatives: int,
+        n_negatives: int,
         current_timestamp: Optional[int] = None,
     ) -> np.ndarray:
         negatives = []
         pos_items = self.user_pos_items.get(user_id, set())
 
-        while len(negatives) < num_negatives:
+        while len(negatives) < n_negatives:
             j = np.random.randint(self.n_items)
             if j not in pos_items:
                 negatives.append(j)
@@ -52,7 +53,7 @@ class TimeAwareNegativeSampler:
     def sample(
         self,
         user_id: int,
-        num_negatives: int,
+        n_negatives: int,
         current_timestamp: Optional[int] = None,
     ) -> np.ndarray:
         # TODO: later implement "up to current_timestamp" behavior
@@ -60,7 +61,7 @@ class TimeAwareNegativeSampler:
         pos_items = set(items)
 
         negatives = []
-        while len(negatives) < num_negatives:
+        while len(negatives) < n_negatives:
             j = np.random.randint(self.n_items)
             if j not in pos_items:
                 negatives.append(j)
