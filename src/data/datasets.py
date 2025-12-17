@@ -5,25 +5,28 @@ import torch
 from src.data.samplers import NegativeSampler
 
 
-class ImplicitDataset(Dataset):
-    def __init__(self, users, items, targets):
+class OfflineImplicitDataset(Dataset):
+    """
+    Simple offline implicit dataset:
+    Each row is a single (user, item, label) example.
+
+    Intended for evaluation where negatives have been precomputed offline.
+    """
+
+    def __init__(self, users, items, labels):
         self.users = users
         self.items = items
-        self.targets = targets
+        self.labels = labels
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.users)
 
-    def __getitem__(self, idx):
-        users = self.users[idx]
-        items = self.items[idx]
-        labels = self.label[idx]
-
-        return (
-            torch.tensor(users, dtype=torch.long),
-            torch.tensor(items, dtype=torch.long),
-            torch.tensor(label, dtype=torch.float32),
-        )
+    def __getitem__(self, idx: int):
+        return {
+            "users": torch.tensor(self.users[idx], dtype=torch.long),
+            "items": torch.tensor(self.items[idx], dtype=torch.long),
+            "labels": torch.tensor(self.labels[idx], dtype=torch.float32),
+        }
 
 
 class PointwiseImplicitDataset(Dataset):
@@ -39,13 +42,13 @@ class PointwiseImplicitDataset(Dataset):
         items,
         timestamps,
         negative_sampler: NegativeSampler,
-        num_negatives: int,
+        n_negatives: int,
     ):
         self.users = users
         self.items = items
         self.timestamps = timestamps
         self.negative_sampler = negative_sampler
-        self.num_negatives = num_negatives
+        self.n_negatives = n_negatives
 
     def __len__(self) -> int:
         return len(self.users)
@@ -63,7 +66,7 @@ class PointwiseImplicitDataset(Dataset):
         # K negatives
         neg_items = self.negative_sampler.sample(
             user_id=u,
-            num_negatives=self.num_negatives,
+            n_negatives=self.n_negatives,
             current_timestamp=t,  # ignored for now, used later if time-aware
         )
 
@@ -72,8 +75,8 @@ class PointwiseImplicitDataset(Dataset):
             item_ids.append(int(j))
             labels.append(0.0)
 
-        return (
-            torch.tensor(user_ids, dtype=torch.long),
-            torch.tensor(item_ids, dtype=torch.long),
-            torch.tensor(labels, dtype=torch.float32),
-        )
+        return {
+            "users": torch.tensor(user_ids, dtype=torch.long),
+            "items": torch.tensor(item_ids, dtype=torch.long),
+            "labels": torch.tensor(labels, dtype=torch.float32),
+        }

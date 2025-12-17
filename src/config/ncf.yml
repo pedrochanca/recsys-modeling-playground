@@ -6,8 +6,6 @@ system:
 
 data:
   location: "data/gold/ml-latest-small"
-  val_split: 0.1
-  test_split: 0.1
 
 SimpleNCF:
   tuning:
@@ -66,15 +64,15 @@ DeepNCF:
     # scheduler
     step_size: [3]
     gamma: [0.7]
-
     # log / evaluation
     log_every: [60]
     threshold: [0.5]
+    n_negatives: [4]
 
   optim_params:
     epochs: 1
     learning_rate: 0.0005
-    batch_size: 4
+    batch_size: 128
     n_workers: 2
 
     dropout: 0.2
@@ -89,3 +87,4 @@ DeepNCF:
     # log / evaluation
     log_every: 20
     threshold: 0.5
+    n_negatives: 4
