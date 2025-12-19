@@ -1,0 +1,46 @@
+info:
+  data_location: "data/gold/ml-latest-small"
+  random_seed: 42
+  device: "cpu" # "cuda", "cpu", or "auto"
+  save_dir: "src/models"
+
+hparam_tune:
+  epochs: [20]
+  learning_rate: [1.0e-3]
+  batch_size: [128, 256]
+  n_workers: [2]
+
+  dropout: [0.0, 0.2]
+  layers:
+    - [64, 32, 16]
+    - [32, 16, 8]
+
+  # weight_decay: [1.0e-5]
+
+  # scheduler
+  step_size: [3]
+  gamma: [0.7]
+  # log / evaluation
+  log_every: [60]
+  threshold: [0.5]
+  n_negatives: [4]
+
+hparam_optim:
+  epochs: 1
+  learning_rate: 0.0005
+  batch_size: 128
+  n_workers: 2
+
+  dropout: 0.2
+  layers: [64, 32, 16]
+
+  # weight_decay: 1.0e-5
+
+  # scheduler
+  step_size: 3
+  gamma: 0.7
+
+  # log / evaluation
+  log_every: 20
+  threshold: 0.5
+  n_negatives: 4

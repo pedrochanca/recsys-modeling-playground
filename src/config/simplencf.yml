@@ -1,0 +1,44 @@
+info:
+  data_location: "data/gold/ml-latest-small"
+  random_seed: 42
+  device: "cpu" # "cuda", "cpu", or "auto"
+  save_dir: "src/models"
+
+hparam_tune:
+  epochs: 3
+  learning_rate: [1.0e-3, 5.0e-4, 1.0e-4]
+  batch_size: [128, 256, 512]
+  n_workers: [2]
+
+  layers:
+    - [64]
+
+  # scheduler
+  step_size: [3]
+  gamma: [0.7]
+
+  # embedding dimensions
+  emb_dim: [32]
+
+  # log / evaluation
+  log_every: [20]
+  threshold: [0.5]
+
+hparam_optim:
+  epochs: 1
+  learning_rate: 0.001
+  batch_size: 4
+  n_workers: 2
+
+  layer: 64
+
+  # scheduler
+  step_size: 3
+  gamma: 0.7
+
+  # embedding dimensions
+  emb_dim: 32
+
+  # log / evaluation
+  log_every: 2000
+  threshold: 0.5
