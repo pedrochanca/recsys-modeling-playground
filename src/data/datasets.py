@@ -65,7 +65,7 @@ class PointwiseImplicitDataset(Dataset):
 
         # K negatives
         neg_items = self.negative_sampler.sample(
-            user_id=u,
+            user_id=user,
             n_negatives=self.n_negatives,
             current_timestamp=timestamp,  # ignored for now, used later if time-aware
         )

@@ -149,7 +149,7 @@ def evaluate_model(
 
             users = users.view(-1)
             items = items.view(-1)
-            targets = targets.view(-1).to(torch.float32)
+            true_targets = true_targets.view(-1).to(torch.float32)
 
             # --------------------------------------------------------------------------
             # ----- Pred & Loss
@@ -158,6 +158,6 @@ def evaluate_model(
 
             loss = loss_func(pred_targets, true_targets)  # (N,)
             total_loss += loss.sum().item()
-            total_samples += targets.numel()
+            total_samples += true_targets.numel()
 
     return total_loss / max(total_samples, 1)
