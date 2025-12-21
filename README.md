@@ -66,9 +66,8 @@ So far we have implemented two versions of the **Neural Collaborative Filtering 
 
 - NCF (MLP version) beyond embedding look-ups (features)
 
-- NCF: Explore other datasets, including those w/ implicit feedback
-
 - Save all results when doing hyperparameter tuning
+
 - Save best hyperparameter combination 
 
 --------------------------------------------------------------------
