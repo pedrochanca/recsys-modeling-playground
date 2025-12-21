@@ -16,10 +16,10 @@ from src.utils.hparam_search import param_comb
 from src.data.samplers import GlobalUniformNegativeSampler
 
 from src.utils.constants import (
-    DEFAULT_USER_COL as USER,
-    DEFAULT_ITEM_COL as ITEM,
-    DEFAULT_TARGET_COL as TARGET,
-    DEFAULT_TIMESTAMP_COL as TIMESTAMP,
+    DEFAULT_USER_COL as USER_COL,
+    DEFAULT_ITEM_COL as ITEM_COL,
+    DEFAULT_TARGET_COL as TARGET_COL,
+    DEFAULT_TIMESTAMP_COL as TIMESTAMP_COL,
 )
 
 
@@ -53,10 +53,12 @@ def main(MODEL_ARCHITECTURE, PLOT, TUNE, CONFIG, VERBOSE):
     df_test = pd.read_parquet(f"{LOCATION}/{TEST_FILE}.parquet")
 
     df_interactions = pd.read_parquet(f"{LOCATION}/interactions.parquet")
-    user_positive_items = df_interactions.groupby(USER)[ITEM].apply(set).to_dict()
+    user_positive_items = (
+        df_interactions.groupby(USER_COL)[ITEM_COL].apply(set).to_dict()
+    )
 
-    n_users = df_interactions[USER].max() + 1
-    n_items = df_interactions[ITEM].max() + 1
+    n_users = df_interactions[USER_COL].max() + 1
+    n_items = df_interactions[ITEM_COL].max() + 1
 
     negative_sampler = GlobalUniformNegativeSampler(n_items, user_positive_items)
 
@@ -77,11 +79,15 @@ def main(MODEL_ARCHITECTURE, PLOT, TUNE, CONFIG, VERBOSE):
         # ------------------------------------------------------------------------------
 
         EPOCHS = hparams["epochs"]
-        N_NEGATIVES = hparams["n_negatives"]
         BATCH_SIZE = hparams["batch_size"]
         N_WORKERS = hparams["n_workers"]
+
         STEP_SIZE = hparams["step_size"]
         GAMMA = hparams["gamma"]
+
+        LAYERS = hparams["layers"]
+        DROPOUT = hparams["dropout"]
+
         LOG_EVERY = hparams["log_every"]
         THRESHOLD = hparams["threshold"]
 
@@ -90,20 +96,20 @@ def main(MODEL_ARCHITECTURE, PLOT, TUNE, CONFIG, VERBOSE):
         # ------------------------------------------------------------------------------
 
         train_dataset = PointwiseImplicitDataset(
-            users=df_train[USER].values,
-            items=df_train[ITEM].values,
-            timestamps=df_train[TIMESTAMP].values,
+            users=df_train[USER_COL].values,
+            items=df_train[ITEM_COL].values,
+            timestamps=df_train[TIMESTAMP_COL].values,
             negative_sampler=negative_sampler,
-            n_negatives=N_NEGATIVES,
+            n_negatives=4,
         )
         train_loader = DataLoader(
             train_dataset, batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=True
         )
 
         test_dataset = OfflineImplicitDataset(
-            users=df_test[USER].values,
-            items=df_test[ITEM].values,
-            targets=df_test[TARGET].values,
+            users=df_test[USER_COL].values,
+            items=df_test[ITEM_COL].values,
+            targets=df_test[TARGET_COL].values,
         )
 
         test_loader = DataLoader(
@@ -115,15 +121,19 @@ def main(MODEL_ARCHITECTURE, PLOT, TUNE, CONFIG, VERBOSE):
         # ------------------------------------------------------------------------------
 
         print(f"Initializing {MODEL_ARCHITECTURE}...")
-        try:
-            # Get the class by name from global scope
-            model_class = globals()[MODEL_ARCHITECTURE]
-            model = model_class(n_users=n_users, n_items=n_items, **hparams).to(DEVICE)
-
-        except KeyError:
-            raise ValueError(
-                f"Model architecture '{MODEL_ARCHITECTURE}' not found in code."
+        if MODEL_ARCHITECTURE == "SimpleNCF":
+            model = SimpleNCF(n_users=n_users, n_items=n_items, layers=LAYERS).to(
+                DEVICE
             )
+        elif MODEL_ARCHITECTURE == "DeepNCF":
+            model = DeepNCF(
+                n_users=n_users,
+                n_items=n_items,
+                layers=LAYERS,
+                dropout=DROPOUT,
+            ).to(DEVICE)
+        else:
+            raise ValueError(f"Model type '{MODEL_ARCHITECTURE}' not found in code.")
 
         # ------------------------------------------------------------------------------
         # ------ Train

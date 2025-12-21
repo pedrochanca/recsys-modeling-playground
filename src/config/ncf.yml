@@ -16,6 +16,7 @@ SimpleNCF:
 
     layers:
       - [64]
+    dropout: [Null]
 
     # scheduler
     step_size: [3]
@@ -34,7 +35,8 @@ SimpleNCF:
     batch_size: 4
     n_workers: 2
 
-    layer: 64
+    layers: [64]
+    dropout: Null
 
     # scheduler
     step_size: 3
@@ -54,10 +56,10 @@ DeepNCF:
     batch_size: [128, 256]
     n_workers: [2]
 
-    dropout: [0.0, 0.2]
     layers:
       - [64, 32, 16]
       - [32, 16, 8]
+    dropout: [0.0, 0.2]
 
     # weight_decay: [1.0e-5]
 
@@ -75,8 +77,8 @@ DeepNCF:
     batch_size: 128
     n_workers: 2
 
-    dropout: 0.2
     layers: [64, 32, 16]
+    dropout: 0.2
 
     # weight_decay: 1.0e-5
 

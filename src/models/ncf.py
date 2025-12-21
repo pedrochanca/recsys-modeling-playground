@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -6,47 +6,65 @@ from torch.utils.data import DataLoader
 from collections import OrderedDict
 
 
-class NCF(object):
+class NCFModel(object):
 
     def __init__(
         self,
+        n_users: int,
+        n_items: int,
         epochs,
-        batch_size,
-        n_workers,
         step_size,
         gamma,
-        n_negatives,
         learning_rate,
         log_every,
         threshold,
-        model_type="SimpleNCF",
-        seed=None,
+        layers: List[int] = None,
+        dropout: float = None,
+        seed: int = 42,
+        model_type: str = "SimpleNCF",
+        device: str = "cpu",
     ):
 
         self.epochs = epochs
-        self.batch_size = batch_size
-        self.n_workers = n_workers
 
         self.step_size = step_size
         self.gamma = gamma
 
-        self.n_negatives = n_negatives
         self.learning_rate = learning_rate
 
         self.log_every = log_every
         self.threshold = threshold
 
-    def train(
-        self,
-        loader: DataLoader,
-        model: nn.Module,
-        loss_func: nn.Module,
-        optimizer: torch.optim.Optimizer,
-        scheduler: Optional[torch.optim.lr_scheduler._LRScheduler],
-        epochs: int,
-        device: torch.device,
-        log_every: int = 1000,
-    ) -> Tuple[nn.Module, List[float]]:
+        self.layers = layers
+        self.dropout = dropout
+
+        self.device = device
+
+        if model_type == "SimpleNCF":
+            self.model = SimpleNCF(
+                n_users=n_users, n_items=n_items, layers=self.layers
+            ).to(self.device)
+        elif model_type == "DeepNCF":
+            self.model = DeepNCF(
+                n_users=n_users,
+                n_items=n_items,
+                layers=self.layers,
+                dropout=self.dropout,
+            ).to(self.device)
+        else:
+            raise ValueError(f"Model type '{model_type}' not found in code.")
+
+        self.loss_func = nn.MSELoss(reduction="none")
+        self.optimizer = torch.optim.Adam(self.model.parameters())
+
+        # Every `step_size` (epoch) calls to scheduler.step(), multiply the learning
+        # rate by `gamma`
+        # By default, Adam has a learning rate of 0.001
+        self.scheduler = torch.optim.lr_scheduler.StepLR(
+            self.optimizer, step_size=self.step_size, gamma=self.gamma
+        )
+
+    def train(self, loader: DataLoader) -> Tuple[nn.Module, List[float]]:
         """
         Train loop for pointwise implicit data with on-the-fly negatives.
 
@@ -79,21 +97,21 @@ class NCF(object):
                     - In eval() mode: use the stored running mean/variance (fixed
                     statistics).
         """
-        model.to(device)
-        model.train()
+        self.model.to(self.device)
+        self.model.train()
 
         total_loss: float = 0.0
         total_samples: int = 0
         all_losses_list: List[float] = []
 
-        for epoch_i in range(epochs):
+        for epoch_i in range(self.epochs):
             for step_i, batch in enumerate(loader):
                 # ----------------------------------------------------------------------
                 # ----- Move to device & flatten
                 # ----------------------------------------------------------------------
-                users = batch["users"].to(device)
-                items = batch["items"].to(device)
-                true_targets = batch["targets"].to(device)
+                users = batch["users"].to(self.device)
+                items = batch["items"].to(self.device)
+                true_targets = batch["targets"].to(self.device)
 
                 # users/items/targets may be (B,) or (B, K+1). Flatten to 1D.
                 users = users.view(-1)
@@ -104,16 +122,16 @@ class NCF(object):
                 # ----- Forward pass
                 # ----------------------------------------------------------------------
                 # Model should return shape (N,) or (N,1); we flatten to (N,)
-                pred_targets = model(users, items).view(-1)
+                pred_targets = self.model(users, items).view(-1)
 
                 # loss_func is expected to have reduction="none"; shape (N,)
-                loss = loss_func(pred_targets, true_targets)
+                loss = self.loss_func(pred_targets, true_targets)
 
                 # ----------------------------------------------------------------------
                 # ----- Backward pass
                 # ----------------------------------------------------------------------
                 # clears old gradients from previous iteration
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
                 # Manually calculate Mean for Backpropagation
                 # The optimizer needs a single scalar to minimize.
@@ -121,7 +139,7 @@ class NCF(object):
                 loss_scalar.backward()
 
                 # param update: uses the gradients in param.grads to update the parameters
-                optimizer.step()
+                self.optimizer.step()
 
                 # ----------------------------------------------------------------------
                 # ----- Logging
@@ -131,7 +149,7 @@ class NCF(object):
                 total_loss += loss.sum().item()
                 total_samples += true_targets.numel()
 
-                if (step_i + 1) % log_every == 0:
+                if (step_i + 1) % self.log_every == 0:
                     avg_loss = total_loss / max(total_samples, 1)
                     print(
                         "Epoch: {} | Step: {} | Loss: {}".format(
@@ -144,17 +162,14 @@ class NCF(object):
                     total_loss = 0
                     total_samples = 0
 
-            if scheduler is not None:
-                scheduler.step()
+            if self.scheduler is not None:
+                self.scheduler.step()
 
-        return model, all_losses_list
+        return all_losses_list
 
     def evaluate(
         self,
         loader: DataLoader,
-        model: nn.Module,
-        loss_func: nn.Module,
-        device: torch.device,
     ) -> float:
         """
         Evaluation loop for pointwise implicit data.
@@ -165,8 +180,8 @@ class NCF(object):
         Returns the average loss per example over the entire loader.
         """
 
-        model.to(device)
-        model.eval()  # Important: turns off dropout!
+        self.model.to(self.device)
+        self.model.eval()  # Important: turns off dropout!
 
         total_loss: float = 0.0
         total_samples: int = 0
@@ -176,9 +191,9 @@ class NCF(object):
                 # ----------------------------------------------------------------------
                 # ----- Move to device & flatten
                 # ----------------------------------------------------------------------
-                users = batch["users"].to(device)
-                items = batch["items"].to(device)
-                true_targets = batch["targets"].to(device)
+                users = batch["users"].to(self.device)
+                items = batch["items"].to(self.device)
+                true_targets = batch["targets"].to(self.device)
 
                 users = users.view(-1)
                 items = items.view(-1)
@@ -187,9 +202,9 @@ class NCF(object):
                 # ----------------------------------------------------------------------
                 # ----- Pred & Loss
                 # ----------------------------------------------------------------------
-                pred_targets = model(users, items)
+                pred_targets = self.model(users, items)
 
-                loss = loss_func(pred_targets, true_targets)  # (N,)
+                loss = self.loss_func(pred_targets, true_targets)  # (N,)
                 total_loss += loss.sum().item()
                 total_samples += true_targets.numel()
 
@@ -198,7 +213,7 @@ class NCF(object):
 
 class SimpleNCF(nn.Module):
 
-    def __init__(self, n_users: int, n_items: int, **kwargs):
+    def __init__(self, n_users: int, n_items: int, layers: List[int]):
         """
         emb_dim = X//2
 
@@ -206,7 +221,7 @@ class SimpleNCF(nn.Module):
         """
         super().__init__()
 
-        layers = kwargs.get("layers")
+        layers = layers
 
         # learnable parameters - user and item embedding matrices
         # user embedding matrix size = n_users x layers[0] // 2
@@ -238,16 +253,13 @@ class DeepNCF(nn.Module):
     nn.Module - when we call the class, it automatically executes the forward function
     """
 
-    def __init__(self, n_users: int, n_items: int, **kwargs):
+    def __init__(self, n_users: int, n_items: int, dropout: float, layers: List[int]):
         """
         (NCF original paper - MLP version)
         layers (#3): 64d - 32d - 16d
         (2 hidden layers + output layer / last hidden layer)
         """
         super().__init__()
-
-        dropout = kwargs.get("dropout")
-        layers = kwargs.get("layers")
 
         self.user_embedding = nn.Embedding(n_users, layers[0] // 2)
         self.item_embedding = nn.Embedding(n_items, layers[0] // 2)
